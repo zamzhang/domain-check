@@ -1,9 +1,13 @@
-// 定义外部变量
 let sitename = "域名监控"; //变量名SITENAME，自定义站点名称，默认为“域名监控”
-let domains = ""; //变量名DOMAINS，填入域名信息json文件直链，必须设置的变量
 let tgid = ""; //变量名TGID，填入TG机器人ID，不需要提醒则不填
 let tgtoken = ""; //变量名TGTOKEN，填入TG的TOKEN，不需要提醒则不填
 let days = "7"; //变量名DAYS，提前几天发送TG提醒，默认为7天，必须为大于0的整数
+
+const DOMAINS = [
+  { "domain": "883344.best", "registrationDate": "2024-06-16", "expirationDate": "2025-07-15", "system": "SpaceShip", "systemURL": "https://www.spaceship.com/zh" },
+  { "domain": "711911.xyz", "registrationDate": "2024-04-16", "expirationDate": "2029-04-15", "system": "SpaceShip", "systemURL": "https://www.spaceship.com/zh" },
+  { "domain": "hello.xyz", "registrationDate": "2024-07-17", "expirationDate": "2025-07-16", "system": "SpaceShip", "systemURL": "https://www.spaceship.com/zh" }
+];
 
 async function sendtgMessage(message, tgid, tgtoken) {
   if (!tgid || !tgtoken) return;
@@ -23,51 +27,42 @@ async function sendtgMessage(message, tgid, tgtoken) {
   }
 }
 
-export default {
-    async fetch(request, env) {
-      sitename = env.SITENAME || sitename;
-      domains = env.DOMAINS || domains;
-      tgid = env.TGID || tgid;
-      tgtoken = env.TGTOKEN || tgtoken;
-      days = parseInt(env.DAYS || days, 10);      
-      // 读取变量DOMAINS中的域名数据，格式为json
-      if (!domains) {
-        return new Response("DOMAINS 环境变量未设置", { status: 500 });
-      }
-  
-      try {
-        const response = await fetch(domains);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        domains = await response.json();
-        if (!Array.isArray(domains)) {
-          throw new Error('JSON 数据格式不正确');
-        }
-  
-        // 检查即将过期的域名并发送 Telegram 消息
-        for (const domain of domains) {
-          const expirationDate = new Date(domain.expirationDate);
-          const today = new Date();
-          const daysRemaining = Math.ceil((expirationDate - today) / (1000 * 60 * 60 * 24));
-  
-          if (daysRemaining > 0 && daysRemaining <= days) {
-            const message = `[域名] ${domain.domain} 将在 ${daysRemaining} 天后过期。过期日期：${domain.expirationDate}`;
-            await sendtgMessage(message, tgid, tgtoken);
-          }
-        }
-  
-        // 处理 generateHTML 的返回值
-        const htmlContent = await generateHTML(domains, sitename);
-        return new Response(htmlContent, {
-          headers: { 'Content-Type': 'text/html' },
-        });
-      } catch (error) {
-        console.error("Fetch error:", error);
-        return new Response("无法获取或解析域名的 json 文件", { status: 500 });
+async function fetchHandler(request, env) {
+  sitename = env.SITENAME || sitename;
+  tgid = env.TGID || tgid;
+  tgtoken = env.TGTOKEN || tgtoken;
+  days = parseInt(env.DAYS || days, 10);
+
+  // 直接使用 DOMAINS 中的域名数据
+  const domains = DOMAINS;
+
+  try {
+    // 检查即将过期的域名并发送 Telegram 消息
+    for (const domain of domains) {
+      const expirationDate = new Date(domain.expirationDate);
+      const today = new Date();
+      const daysRemaining = Math.ceil((expirationDate - today) / (1000 * 60 * 60 * 24));
+
+      if (daysRemaining > 0 && daysRemaining <= days) {
+        const message = `[域名] ${domain.domain} 将在 ${daysRemaining} 天后过期。过期日期：${domain.expirationDate}`;
+        await sendtgMessage(message, tgid, tgtoken);
       }
     }
-};
+
+    // 处理 generateHTML 的返回值
+    const htmlContent = await generateHTML(domains, sitename);
+    return new Response(htmlContent, {
+      headers: { 'Content-Type': 'text/html' },
+    });
+  } catch (error) {
+    console.error("Fetch error:", error);
+    return new Response("无法获取或解析域名的 json 数据", { status: 500 });
+  }
+}
+
+addEventListener("fetch", (event) => {
+  event.respondWith(fetchHandler(event.request, event));
+});
 
 async function generateHTML(domains, SITENAME) {
   const rows = await Promise.all(domains.map(async info => {
@@ -143,13 +138,12 @@ async function generateHTML(domains, SITENAME) {
           width: 100%;
           border-collapse: collapse;
           white-space: nowrap;
-          table-layout: auto; /* 自动列宽 */
+          table-layout: auto;
         }
         th, td {
           padding: 12px;
           text-align: left;
           border-bottom: 1px solid #ddd;
-          white-space: nowrap; /* 避免内容自动换行 */
         }
         th {
           background-color: #f2f2f2;
