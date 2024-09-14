@@ -1,4 +1,4 @@
-let sitename = "域名监控"; //变量名SITENAME，自定义站点名称，默认为“域名监控”
+let sitename = "续期监控"; //变量名SITENAME，自定义站点名称，默认为“域名监控”
 let tgid = ""; //变量名TGID，填入TG机器人ID，不需要提醒则不填
 let tgtoken = ""; //变量名TGTOKEN，填入TG的TOKEN，不需要提醒则不填
 let days = "7"; //变量名DAYS，提前几天发送TG提醒，默认为7天，必须为大于0的整数
